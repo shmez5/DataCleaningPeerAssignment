@@ -1,0 +1,114 @@
+run_analysis.R
+========================================================
+
+## Preliminaries
+### Load relevant data to be included in dataset.  ("Inertial signal" data ignored since the raw, unprocessed data was not needed for the assignment.)
+
+### No libraries used outside of base package.
+```{r}
+require(markdown)
+require(knitr)
+
+### Load data and get date/time of download.
+```{r}
+setwd("C:/Users/Mike/Dropbox/Coursera/CleaningData/Peer_Assignment/UCIHARDataset")
+dateDownloaded <- date()   # "Sun Apr 20 19:31:20 2014"
+```
+## Exploratory analysis
+
+### Read the data into R
+
+
+```{r loadData}
+subject_train <- read.table("./train/subject_train.txt",stringsAsFactors=FALSE) # 7352 X 1
+X_train <- read.table("./train/X_train.txt",stringsAsFactors=FALSE) # 7352 X 561
+y_train <- read.table("./train/y_train.txt",stringsAsFactors=FALSE) # 7352 X 1
+subject_test <- read.table("./test/subject_test.txt",stringsAsFactors=FALSE) # 2947 X 1
+X_test <- read.table("./test/X_test.txt",stringsAsFactors=FALSE) # 2947 X 561
+y_test <- read.table("./test/y_test.txt",stringsAsFactors=FALSE) # 2947 X 1
+activity_labels <- read.table("activity_labels.txt",stringsAsFactors=FALSE) # 561 X 2
+features <- read.table("features.txt",stringsAsFactors=FALSE) # 561 X 2
+```
+------
+
+## Exploratory analysis
+
+### Explore dimensions and head of the data sets, and check for missing values.
+```{r}
+dim(X_train)
+head(X_train) 
+# etc.
+```
+
+## Construct the tidy datasets
+
+### Combine training and test sets with subject vectors
+```{r}
+train1 <- data.frame(cbind(X_train,subject_train[,1]))
+train <- data.frame(cbind(train1,y_train))
+test1 <- data.frame(cbind(X_test,subject_test[,1]))
+test <- data.frame(cbind(test1,y_test))
+```
+### Equate the names of subject vectors in training and test sets
+```{r}
+names(train)[562]=names(test)[562]
+```
+### Combine the training and test sets, use the feature vector to name the variables, and name the terminal "activity" and "subject" variables.  Change variable names to lower case.
+
+```{r}
+data <- data.frame(rbind(train,test))
+colnames(data)[1:561] <- features[,2]
+colnames(data)[562:563] <- c("subject","activity")
+names(data) = tolower(names(data))
+```
+
+### Descriptive activity names for the activities in the data set
+```{r}
+data[,563][data[,563]==1] <- "WALKING"
+data[,563][data[,563]==2] <- "WALKING_UPSTAIRS"
+data[,563][data[,563]==3] <- "WALKING_DOWNSTAIRS"
+data[,563][data[,563]==4] <- "SITTING"
+data[,563][data[,563]==5] <- "STANDING"
+data[,563][data[,563]==6] <- "LAYING"
+```
+##  "data" is a tidy data set!
+
+### Look at structure and check for missing values
+```{r}
+str(data)
+which(is.na(data)) # integer(0) -> no missing values
+
+### Create a vector corresponding to variables that refer only to mean and standard deviation measurements.
+
+```{r}
+MeanStdVec = sort(union(grep("-mean()",names(data),fixed=TRUE),grep("-std()",names(data),fixed=TRUE)))
+length(MeanStdVec) # a vector of length 66
+```
+
+## Combine the "-mean()/-std()" subset of "data" with the activity and subject vectors, to form "dataSub".
+
+```{r}
+dataSub = cbind(subset(data,select=MeanStdVec),data[,562:563])
+```
+
+## Create a second, independent tidy data set with the average of each variable for each activity (rows 1-6) and for each subject (rows 7-36).
+```{r}
+ActMeans <- as.data.frame(aggregate(dataSub[,1:67],dataSub["activity"],mean))
+SubjMeans <- as.data.frame(aggregate(dataSub[,1:67],dataSub["subject"],mean))
+data2 <- as.data.frame(rbind(ActMeans[,2:67],SubjMeans[,2:67]))
+dim(data2) # 36 X 66
+```
+## Prepend "activity" and "subject" columns
+```{r}
+subject <- c(rep("0",6),seq(30))
+activity <- c("WALKING","WALKING_UPSTAIRS","WALKING_DOWNSTAIRS","SITTING","STANDING","LAYING",rep("",30))
+
+data2 <- as.data.frame(cbind(activity,subject,data2))
+write.table(data2, file="./tidy2.txt", sep="\t", row.names=FALSE)
+```
+
+
+
+
+
+
